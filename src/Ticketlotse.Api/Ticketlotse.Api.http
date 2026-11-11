@@ -1,6 +1,8 @@
-@host = http://localhost:5288
+### Profil "https" aus launchSettings.json. Für das Profil "http": http://localhost:5288
+@host = https://localhost:7258
 
-### Ticket anlegen – erwartet 201 mit Location-Header
+### Ticket anlegen – erwartet 201 mit Location-Header.
+### Diesen Request zuerst senden: die folgenden Aufrufe lesen die Id aus seiner Antwort.
 # @name anlegen
 POST {{host}}/tickets
 Content-Type: application/json
@@ -11,11 +13,8 @@ Content-Type: application/json
   "text": "Mein monatlicher Abschlag ist zu hoch, bitte neu berechnen."
 }
 
-### Id aus der Antwort von "anlegen" übernehmen
-@ticketId = {{anlegen.response.body.$.id}}
-
 ### Ticket abrufen – erwartet 200
-GET {{host}}/tickets/{{ticketId}}
+GET {{host}}/tickets/{{anlegen.response.body.$.id}}
 
 ### Alle Tickets – erwartet 200
 GET {{host}}/tickets
@@ -28,7 +27,7 @@ GET {{host}}/tickets?status=Freigegeben
 
 ### Freigabe – erwartet 409, solange das Ticket noch nicht eingeordnet ist.
 ### Ab Etappe 3 ordnet die KI das Ticket ein, dann liefert derselbe Aufruf 200.
-PUT {{host}}/tickets/{{ticketId}}/freigabe
+PUT {{host}}/tickets/{{anlegen.response.body.$.id}}/freigabe
 
 ### Notfall-Ticket anlegen – "Gasgeruch" zieht die Dringlichkeit später
 ### unabhängig vom KI-Vorschlag auf Hoch (Fachregel im Domain-Projekt)
@@ -41,7 +40,7 @@ Content-Type: application/json
   "text": "Im Treppenhaus riecht es seit heute Morgen stark nach Gas."
 }
 
-### Ticket ohne Betreff – erlaubt, der Betreff ist freiwillig
+### Ticket ohne Betreff – erlaubt, der Betreff ist freiwillig (Antwort enthält "betreff": "")
 POST {{host}}/tickets
 Content-Type: application/json
 
