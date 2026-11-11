@@ -1,0 +1,21 @@
+using Ticketlotse.Api;
+using Ticketlotse.Application;
+using Ticketlotse.Infrastructure;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Einheitliche Fehlerausgabe als ProblemDetails (RFC 9457).
+builder.Services.AddProblemDetails();
+
+// Ablage noch im Arbeitsspeicher – in Etappe 4 ersetzt EF Core diese Zeile.
+builder.Services.AddSingleton<ITicketRepository, TicketRepositoryImArbeitsspeicher>();
+builder.Services.AddScoped<Ticketverwaltung>();
+
+var app = builder.Build();
+
+app.MapTicketEndpunkte();
+
+app.Run();
+
+// Damit die Integrationstests die Anwendung hochfahren können.
+public partial class Program;

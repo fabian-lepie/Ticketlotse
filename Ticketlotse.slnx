@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ticketlotse.Domain/Ticketlotse.Domain.csproj" />
+    <Project Path="src/Ticketlotse.Application/Ticketlotse.Application.csproj" />
+    <Project Path="src/Ticketlotse.Infrastructure/Ticketlotse.Infrastructure.csproj" />
+    <Project Path="src/Ticketlotse.Api/Ticketlotse.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ticketlotse.Tests/Ticketlotse.Tests.csproj" />
+  </Folder>
+</Solution>
