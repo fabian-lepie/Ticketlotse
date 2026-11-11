@@ -20,7 +20,7 @@ public sealed record TicketAntwort(
     string? Kategorie,
     string? Dringlichkeit,
     string? Team,
-    double? Sicherheit,
+    double? Konfidenz,
     string? Begruendung,
     string? Antwortvorschlag)
 {
@@ -34,7 +34,7 @@ public sealed record TicketAntwort(
         ticket.Klassifizierung?.Kategorie.ToString(),
         ticket.Klassifizierung?.Dringlichkeit.ToString(),
         ticket.Team?.ToString(),
-        ticket.Klassifizierung?.Sicherheit.Wert,
+        ticket.Klassifizierung?.Konfidenz.Wert,
         ticket.Klassifizierung?.Begruendung,
         ticket.Klassifizierung?.Antwortvorschlag);
 }

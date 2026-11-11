@@ -1,0 +1,81 @@
+@host = http://localhost:5288
+
+### Ticket anlegen – erwartet 201 mit Location-Header
+# @name anlegen
+POST {{host}}/tickets
+Content-Type: application/json
+
+{
+  "absender": "kunde@example.de",
+  "betreff": "Abschlag zu hoch",
+  "text": "Mein monatlicher Abschlag ist zu hoch, bitte neu berechnen."
+}
+
+### Id aus der Antwort von "anlegen" übernehmen
+@ticketId = {{anlegen.response.body.$.id}}
+
+### Ticket abrufen – erwartet 200
+GET {{host}}/tickets/{{ticketId}}
+
+### Alle Tickets – erwartet 200
+GET {{host}}/tickets
+
+### Nach Status filtern – erwartet 200 mit dem angelegten Ticket
+GET {{host}}/tickets?status=Neu
+
+### Nach Status filtern – erwartet 200 mit leerer Liste
+GET {{host}}/tickets?status=Freigegeben
+
+### Freigabe – erwartet 409, solange das Ticket noch nicht eingeordnet ist.
+### Ab Etappe 3 ordnet die KI das Ticket ein, dann liefert derselbe Aufruf 200.
+PUT {{host}}/tickets/{{ticketId}}/freigabe
+
+### Notfall-Ticket anlegen – "Gasgeruch" zieht die Dringlichkeit später
+### unabhängig vom KI-Vorschlag auf Hoch (Fachregel im Domain-Projekt)
+POST {{host}}/tickets
+Content-Type: application/json
+
+{
+  "absender": "nachbar@example.de",
+  "betreff": "Gasgeruch im Treppenhaus",
+  "text": "Im Treppenhaus riecht es seit heute Morgen stark nach Gas."
+}
+
+### Ticket ohne Betreff – erlaubt, der Betreff ist freiwillig
+POST {{host}}/tickets
+Content-Type: application/json
+
+{
+  "absender": "kundin@example.de",
+  "betreff": null,
+  "text": "Ich ziehe zum 1. Dezember um und möchte den Vertrag mitnehmen."
+}
+
+### Fehlerfall: Text fehlt – erwartet 400
+POST {{host}}/tickets
+Content-Type: application/json
+
+{
+  "absender": "kunde@example.de",
+  "betreff": "Leer",
+  "text": "   "
+}
+
+### Fehlerfall: Absender fehlt – erwartet 400
+POST {{host}}/tickets
+Content-Type: application/json
+
+{
+  "absender": "",
+  "betreff": "Ohne Absender",
+  "text": "Bitte um Rückruf."
+}
+
+### Fehlerfall: unbekannter Status – erwartet 400 mit Liste der erlaubten Werte
+GET {{host}}/tickets?status=Quatsch
+
+### Fehlerfall: unbekannte Id – erwartet 404
+GET {{host}}/tickets/00000000-0000-0000-0000-000000000000
+
+### Fehlerfall: Freigabe einer unbekannten Id – erwartet 404
+PUT {{host}}/tickets/00000000-0000-0000-0000-000000000000/freigabe

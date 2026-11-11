@@ -1,8 +1,8 @@
-﻿namespace Ticketlotse.Domain;
+namespace Ticketlotse.Domain;
 
 public sealed record Klassifizierung(
     Kategorie Kategorie,
     Dringlichkeit Dringlichkeit,
-    Sicherheit Sicherheit,
+    Konfidenz Konfidenz,
     string Begruendung,
     string Antwortvorschlag);

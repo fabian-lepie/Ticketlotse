@@ -48,7 +48,7 @@ public sealed class Ticket
             ? vorschlag with { Dringlichkeit = Dringlichkeit.Hoch }
             : vorschlag;
 
-        Status = vorschlag.Sicherheit.IstAusreichend
+        Status = vorschlag.Konfidenz.IstAusreichend
             ? TicketStatus.WartetAufFreigabe
             : TicketStatus.ManuellePruefung;
     }

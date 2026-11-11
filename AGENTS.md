@@ -19,7 +19,7 @@ Demo-/Bewerbungsprojekt von Fabian Lepie – sauberer, gut erklärbarer Code ist
 - Kategorien: Zaehlerstand, Abschlag, Rechnung, Umzug, Lieferantenwechsel, TarifVertrag, Stoerung, Sonstiges
 - Dringlichkeit: Niedrig, Mittel, Hoch
 - Teams: Messwesen, Abrechnung, Kundenservice, Vertrieb, Netzbetrieb (Zuordnung aus der Kategorie)
-- Status: Neu → WartetAufFreigabe (Sicherheit ≥ 70 %) oder ManuellePruefung (< 70 %) → Freigegeben
+- Status: Neu → WartetAufFreigabe (Konfidenz ≥ 70 %) oder ManuellePruefung (< 70 %) → Freigegeben
 - Sicherheitsregel: Notfallbegriffe (Gasgeruch, Stromausfall, kein Strom, kein Wasser, Wasserrohrbruch) → Dringlichkeit immer Hoch, egal was die KI vorschlägt
 - Ein Mensch gibt jeden KI-Vorschlag frei
 

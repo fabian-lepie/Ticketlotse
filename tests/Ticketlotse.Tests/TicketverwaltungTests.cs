@@ -21,7 +21,7 @@ public class TicketverwaltungTests
         _verwaltung.ErfassenAsync("kunde@example.de", "Abschlag", text);
 
     private static Klassifizierung Vorschlag() =>
-        new(Kategorie.Abschlag, Dringlichkeit.Mittel, new Sicherheit(0.9), "Begründung", "Antwortvorschlag");
+        new(Kategorie.Abschlag, Dringlichkeit.Mittel, new Konfidenz(0.9), "Begründung", "Antwortvorschlag");
 
     [Test]
     public async Task Ein_erfasstes_Ticket_ist_danach_auffindbar()

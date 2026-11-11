@@ -11,8 +11,8 @@ public class TicketTests
     private static Klassifizierung Vorschlag(
         Kategorie kategorie = Kategorie.Abschlag,
         Dringlichkeit dringlichkeit = Dringlichkeit.Niedrig,
-        double sicherheit = 0.9) =>
-        new(kategorie, dringlichkeit, new Sicherheit(sicherheit), "Begründung", "Antwortvorschlag");
+        double konfidenz = 0.9) =>
+        new(kategorie, dringlichkeit, new Konfidenz(konfidenz), "Begründung", "Antwortvorschlag");
 
     [Test]
     public void Neues_Ticket_hat_Status_Neu()
@@ -29,19 +29,19 @@ public class TicketTests
     }
 
     [Test]
-    public void Bei_ausreichender_Sicherheit_wartet_das_Ticket_auf_Freigabe()
+    public void Bei_ausreichender_Konfidenz_wartet_das_Ticket_auf_Freigabe()
     {
         var ticket = NeuesTicket();
-        ticket.Einordnen(Vorschlag(sicherheit: 0.9));
+        ticket.Einordnen(Vorschlag(konfidenz: 0.9));
 
         Assert.That(ticket.Status, Is.EqualTo(TicketStatus.WartetAufFreigabe));
     }
 
     [Test]
-    public void Bei_geringer_Sicherheit_geht_das_Ticket_in_die_manuelle_Pruefung()
+    public void Bei_geringer_Konfidenz_geht_das_Ticket_in_die_manuelle_Pruefung()
     {
         var ticket = NeuesTicket();
-        ticket.Einordnen(Vorschlag(sicherheit: 0.5));
+        ticket.Einordnen(Vorschlag(konfidenz: 0.5));
 
         Assert.That(ticket.Status, Is.EqualTo(TicketStatus.ManuellePruefung));
     }
