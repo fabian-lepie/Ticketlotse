@@ -18,8 +18,11 @@ public static class TicketEndpunkte
     private static async Task<IResult> Anlegen(
         TicketAnlegenAnfrage anfrage,
         Ticketverwaltung verwaltung,
+        ILoggerFactory loggerFabrik,
         CancellationToken abbruch)
     {
+        var protokoll = loggerFabrik.CreateLogger(typeof(TicketEndpunkte));
+
         Ticket ticket;
         try
         {
@@ -28,9 +31,11 @@ public static class TicketEndpunkte
         catch (ArgumentException fehler)
         {
             // Die Pflichtangaben prüft das Ticket selbst; für den Aufrufer ist das ein 400.
+            protokoll.LogWarning("Ticket abgelehnt: {Grund}", fehler.Message);
             return Results.Problem(fehler.Message, statusCode: StatusCodes.Status400BadRequest);
         }
 
+        protokoll.LogInformation("Ticket {TicketId} erfasst", ticket.Id);
         return Results.Created($"/tickets/{ticket.Id}", TicketAntwort.Von(ticket));
     }
 
@@ -46,7 +51,6 @@ public static class TicketEndpunkte
                 return Results.Problem(
                     $"Unbekannter Status \"{status}\". Möglich sind: {string.Join(", ", Enum.GetNames<TicketStatus>())}.",
                     statusCode: StatusCodes.Status400BadRequest);
-
             filter = erkannt;
         }
 
@@ -65,7 +69,6 @@ public static class TicketEndpunkte
         }
         status = Enum.Parse<TicketStatus>(statusName);
         return true;
-        
     }
 
     private static async Task<IResult> Abrufen(Guid id, Ticketverwaltung verwaltung, CancellationToken abbruch)
@@ -74,16 +77,30 @@ public static class TicketEndpunkte
         return ticket is null ? Results.NotFound() : Results.Ok(TicketAntwort.Von(ticket));
     }
 
-    private static async Task<IResult> Freigeben(Guid id, Ticketverwaltung verwaltung, CancellationToken abbruch)
+    private static async Task<IResult> Freigeben(
+        Guid id,
+        Ticketverwaltung verwaltung,
+        ILoggerFactory loggerFabrik,
+        CancellationToken abbruch)
     {
+        var protokoll = loggerFabrik.CreateLogger(typeof(TicketEndpunkte));
+
         try
         {
             var ticket = await verwaltung.FreigebenAsync(id, abbruch);
-            return ticket is null ? Results.NotFound() : Results.Ok(TicketAntwort.Von(ticket));
+            if (ticket is null)
+            {
+                protokoll.LogInformation("Freigabe für unbekanntes Ticket {TicketId} angefragt", id);
+                return Results.NotFound();
+            }
+
+            protokoll.LogInformation("Ticket {TicketId} wurde freigegeben", ticket.Id);
+            return Results.Ok(TicketAntwort.Von(ticket));
         }
         catch (InvalidOperationException fehler)
         {
             // Ticket ist noch nicht eingeordnet: fachlicher Konflikt, kein Serverfehler.
+            protokoll.LogWarning("Freigabe für Ticket {TicketId} abgelehnt: {Grund}", id, fehler.Message);
             return Results.Problem(fehler.Message, statusCode: StatusCodes.Status409Conflict);
         }
     }

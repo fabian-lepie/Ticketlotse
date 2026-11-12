@@ -11,7 +11,10 @@ builder.Services.AddProblemDetails();
 builder.Services.AddSingleton<ITicketRepository, TicketRepositoryImArbeitsspeicher>();
 builder.Services.AddScoped<Ticketverwaltung>();
 
+builder.Services.AddExceptionHandler<UnerwarteteFehler>();
+
 var app = builder.Build();
+app.UseExceptionHandler();
 
 app.MapTicketEndpunkte();
 
