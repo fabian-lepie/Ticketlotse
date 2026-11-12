@@ -42,7 +42,7 @@ public static class TicketEndpunkte
         TicketStatus? filter = null;
         if (!string.IsNullOrWhiteSpace(status))
         {
-            if (!Enum.TryParse<TicketStatus>(status, ignoreCase: true, out var erkannt))
+            if (!IstBekannterStatus(status, out var erkannt))
                 return Results.Problem(
                     $"Unbekannter Status \"{status}\". Möglich sind: {string.Join(", ", Enum.GetNames<TicketStatus>())}.",
                     statusCode: StatusCodes.Status400BadRequest);
@@ -52,6 +52,20 @@ public static class TicketEndpunkte
 
         var treffer = await verwaltung.SuchenAsync(filter, abbruch);
         return Results.Ok(treffer.Select(TicketAntwort.Von));
+    }
+
+    private static bool IstBekannterStatus(string statusZuUeberpruefen, out TicketStatus status)
+    {
+        var statusName = Enum.GetNames<TicketStatus>()
+            .FirstOrDefault(n => string.Equals(n, statusZuUeberpruefen, StringComparison.OrdinalIgnoreCase));
+        if (statusName == null)
+        {
+            status = default;
+            return false;
+        }
+        status = Enum.Parse<TicketStatus>(statusName);
+        return true;
+        
     }
 
     private static async Task<IResult> Abrufen(Guid id, Ticketverwaltung verwaltung, CancellationToken abbruch)

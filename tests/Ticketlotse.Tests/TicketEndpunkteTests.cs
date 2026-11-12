@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using NUnit.Framework;
 using Ticketlotse.Api;
@@ -98,6 +99,24 @@ public class TicketEndpunkteTests
         Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
     }
 
+    [TestCase("99")]
+    [TestCase("2")]
+    public async Task GET_tickets_mit_Status_als_Zahl_wird_abgelehnt(string status)
+    {
+        var antwort = await _client.GetAsync($"/tickets?status={status}");
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [TestCase("neu")]
+    [TestCase("NEU")]
+    public async Task GET_tickets_akzeptiert_den_Status_unabhaengig_von_Gross_und_Kleinschreibung(string status)
+    {
+        var antwort = await _client.GetAsync($"/tickets?status={status}");
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+    }
+
     [Test]
     public async Task PUT_freigabe_eines_unbekannten_Tickets_gibt_404()
     {
@@ -114,5 +133,60 @@ public class TicketEndpunkteTests
         var antwort = await _client.PutAsync($"/tickets/{angelegt.Id}/freigabe", null);
 
         Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
+    }
+
+    [Test]
+    public async Task POST_tickets_mit_kaputtem_JSON_wird_abgelehnt()
+    {
+        using var inhalt = new StringContent("{\"absender\": ", Encoding.UTF8, "application/json");
+
+        var antwort = await _client.PostAsync("/tickets", inhalt);
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [Test]
+    public async Task POST_tickets_ohne_Body_wird_abgelehnt()
+    {
+        var antwort = await _client.PostAsync("/tickets", null);
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+
+    [Test]
+    public async Task POST_tickets_leerer_Body_wird_abgelehnt()
+    {
+        using var inhalt = new StringContent("", Encoding.UTF8, "application/json");
+
+        var antwort = await _client.PostAsync("/tickets", inhalt);
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [Test]
+    public async Task POST_tickets_mit_falschem_Content_Type_wird_abgelehnt()
+    {
+        using var inhalt = new StringContent("Hallo", Encoding.UTF8, "text/plain");
+
+        var antwort = await _client.PostAsync("/tickets", inhalt);
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.UnsupportedMediaType));
+    }
+
+    [Test]
+    public async Task GET_ticket_mit_einer_Id_die_keine_Guid_ist_gibt_404()
+    {
+        var antwort = await _client.GetAsync("/tickets/abc");
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+    [Test]
+    public async Task PUT_freigabe_mit_einer_Id_die_keine_Guid_ist_gibt_404()
+    {
+        var antwort = await _client.PutAsync("/tickets/abc/freigabe", null);
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
     }
 }
