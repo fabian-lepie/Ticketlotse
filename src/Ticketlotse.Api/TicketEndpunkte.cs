@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Ticketlotse.Application;
 using Ticketlotse.Domain;
 
@@ -15,7 +16,7 @@ public static class TicketEndpunkte
         tickets.MapPut("/{id:guid}/freigabe", Freigeben);
     }
 
-    private static async Task<IResult> Anlegen(
+    private static async Task<Results<Created<TicketAntwort>, ProblemHttpResult>> Anlegen(
         TicketAnlegenAnfrage anfrage,
         Ticketverwaltung verwaltung,
         ILoggerFactory loggerFabrik,
@@ -32,14 +33,14 @@ public static class TicketEndpunkte
         {
             // Die Pflichtangaben prüft das Ticket selbst; für den Aufrufer ist das ein 400.
             protokoll.LogWarning("Ticket abgelehnt: {Grund}", fehler.Message);
-            return Results.Problem(fehler.Message, statusCode: StatusCodes.Status400BadRequest);
+            return TypedResults.Problem(fehler.Message, statusCode: StatusCodes.Status400BadRequest);
         }
 
         protokoll.LogInformation("Ticket {TicketId} erfasst", ticket.Id);
-        return Results.Created($"/tickets/{ticket.Id}", TicketAntwort.Von(ticket));
+        return TypedResults.Created($"/tickets/{ticket.Id}", TicketAntwort.Von(ticket));
     }
 
-    private static async Task<IResult> Suchen(
+    private static async Task<Results<Ok<IEnumerable<TicketAntwort>>, ProblemHttpResult>> Suchen(
         string? status,
         Ticketverwaltung verwaltung,
         CancellationToken abbruch)
@@ -48,14 +49,16 @@ public static class TicketEndpunkte
         if (!string.IsNullOrWhiteSpace(status))
         {
             if (!IstBekannterStatus(status, out var erkannt))
-                return Results.Problem(
+            {
+                return TypedResults.Problem(
                     $"Unbekannter Status \"{status}\". Möglich sind: {string.Join(", ", Enum.GetNames<TicketStatus>())}.",
                     statusCode: StatusCodes.Status400BadRequest);
+            }
             filter = erkannt;
         }
 
         var treffer = await verwaltung.SuchenAsync(filter, abbruch);
-        return Results.Ok(treffer.Select(TicketAntwort.Von));
+        return TypedResults.Ok(treffer.Select(TicketAntwort.Von));
     }
 
     private static bool IstBekannterStatus(string statusZuUeberpruefen, out TicketStatus status)
@@ -71,13 +74,16 @@ public static class TicketEndpunkte
         return true;
     }
 
-    private static async Task<IResult> Abrufen(Guid id, Ticketverwaltung verwaltung, CancellationToken abbruch)
+    private static async Task<Results<Ok<TicketAntwort>, NotFound>> Abrufen(
+        Guid id, 
+        Ticketverwaltung verwaltung, 
+        CancellationToken abbruch)
     {
         var ticket = await verwaltung.FindenAsync(id, abbruch);
-        return ticket is null ? Results.NotFound() : Results.Ok(TicketAntwort.Von(ticket));
+        return ticket is null ? TypedResults.NotFound() : TypedResults.Ok(TicketAntwort.Von(ticket));
     }
 
-    private static async Task<IResult> Freigeben(
+    private static async Task<Results<Ok<TicketAntwort>, NotFound, ProblemHttpResult>> Freigeben(
         Guid id,
         Ticketverwaltung verwaltung,
         ILoggerFactory loggerFabrik,
@@ -91,17 +97,17 @@ public static class TicketEndpunkte
             if (ticket is null)
             {
                 protokoll.LogInformation("Freigabe für unbekanntes Ticket {TicketId} angefragt", id);
-                return Results.NotFound();
+                return TypedResults.NotFound();
             }
 
             protokoll.LogInformation("Ticket {TicketId} wurde freigegeben", ticket.Id);
-            return Results.Ok(TicketAntwort.Von(ticket));
+            return TypedResults.Ok(TicketAntwort.Von(ticket));
         }
         catch (InvalidOperationException fehler)
         {
             // Ticket ist noch nicht eingeordnet: fachlicher Konflikt, kein Serverfehler.
             protokoll.LogWarning("Freigabe für Ticket {TicketId} abgelehnt: {Grund}", id, fehler.Message);
-            return Results.Problem(fehler.Message, statusCode: StatusCodes.Status409Conflict);
+            return TypedResults.Problem(fehler.Message, statusCode: StatusCodes.Status409Conflict);
         }
     }
 }
