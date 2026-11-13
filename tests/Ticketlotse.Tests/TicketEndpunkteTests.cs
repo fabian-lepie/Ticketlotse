@@ -196,6 +196,189 @@ public class TicketEndpunkteTests
         Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
     }
 
+    // Überschreibt die in Program.cs registrierte KeineKiAngebunden – die letzte Registrierung gewinnt.
+    private WebApplicationFactory<Program> MitKi(ITicketKlassifizierer klassifizierer) =>
+        _anwendung.WithWebHostBuilder(aufbau =>
+            aufbau.ConfigureServices(dienste => dienste.AddSingleton(klassifizierer)));
+
+    private static async Task<TicketAntwort> TicketAnlegen(
+        HttpClient client, string text = "Mein Abschlag ist zu hoch.")
+    {
+        var antwort = await client.PostAsJsonAsync(
+            "/tickets", new TicketAnlegenAnfrage("kunde@example.de", "Abschlag", text));
+        antwort.EnsureSuccessStatusCode();
+        return (await antwort.Content.ReadFromJsonAsync<TicketAntwort>())!;
+    }
+
+    private static KorrekturAnfrage Korrektur(
+        string kategorie = "Lieferantenwechsel",
+        string dringlichkeit = "Mittel",
+        string begruendung = "Kunde will wechseln, keine Rechnungsfrage.",
+        string bearbeiter = "m.schmidt") => new(kategorie, dringlichkeit, begruendung, bearbeiter);
+
+    [Test]
+    public async Task POST_tickets_ordnet_das_Ticket_sofort_ein()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Liefert(Kategorie.Zaehlerstand));
+        using var client = anwendung.CreateClient();
+
+        var ticket = await TicketAnlegen(client);
+
+        Assert.That(ticket.Status, Is.EqualTo(nameof(TicketStatus.WartetAufFreigabe)));
+        Assert.That(ticket.Kategorie, Is.EqualTo(nameof(Kategorie.Zaehlerstand)));
+        Assert.That(ticket.Team, Is.EqualTo(nameof(Team.Messwesen)));
+        Assert.That(ticket.Konfidenz, Is.EqualTo(0.9));
+    }
+
+    [Test]
+    public async Task Der_vollstaendige_Weg_von_der_Anlage_bis_zur_Freigabe()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Liefert());
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+
+        var antwort = await client.PutAsync($"/tickets/{angelegt.Id}/freigabe", null);
+        var freigegeben = (await antwort.Content.ReadFromJsonAsync<TicketAntwort>())!;
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(freigegeben.Status, Is.EqualTo(nameof(TicketStatus.Freigegeben)));
+    }
+
+    [Test]
+    public async Task POST_einordnung_holt_eine_ausgefallene_Einordnung_nach()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.ScheitertBeimErstenMal());
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+        Assert.That(angelegt.Status, Is.EqualTo(nameof(TicketStatus.Neu)), "Der erste Versuch muss scheitern.");
+
+        var antwort = await client.PostAsync($"/tickets/{angelegt.Id}/einordnung", null);
+        var eingeordnet = (await antwort.Content.ReadFromJsonAsync<TicketAntwort>())!;
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(eingeordnet.Status, Is.EqualTo(nameof(TicketStatus.WartetAufFreigabe)));
+    }
+
+    [Test]
+    public async Task POST_einordnung_auf_ein_bereits_eingeordnetes_Ticket_gibt_409()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Liefert());
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+
+        var antwort = await client.PostAsync($"/tickets/{angelegt.Id}/einordnung", null);
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
+    }
+
+    [Test]
+    public async Task POST_einordnung_gibt_503_wenn_die_KI_weiter_ausfaellt()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Scheitert());
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+
+        var antwort = await client.PostAsync($"/tickets/{angelegt.Id}/einordnung", null);
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.ServiceUnavailable));
+    }
+
+    [Test]
+    public async Task POST_einordnung_auf_eine_unbekannte_Id_gibt_404()
+    {
+        var antwort = await _client.PostAsync($"/tickets/{Guid.NewGuid()}/einordnung", null);
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+    [Test]
+    public async Task PUT_klassifizierung_haengt_eine_menschliche_Korrektur_an()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Liefert(Kategorie.Rechnung));
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+
+        var antwort = await client.PutAsJsonAsync($"/tickets/{angelegt.Id}/klassifizierung", Korrektur());
+        var korrigiert = (await antwort.Content.ReadFromJsonAsync<TicketAntwort>())!;
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(korrigiert.Kategorie, Is.EqualTo(nameof(Kategorie.Lieferantenwechsel)));
+        Assert.That(korrigiert.Team, Is.EqualTo(nameof(Team.Vertrieb)));
+        Assert.That(korrigiert.Status, Is.EqualTo(nameof(TicketStatus.WartetAufFreigabe)));
+        Assert.That(korrigiert.Konfidenz, Is.Null, "Eine menschliche Einordnung hat keine Konfidenz.");
+        Assert.That(korrigiert.Antwortvorschlag, Is.Null);
+    }
+
+    [Test]
+    public async Task GET_ticket_liefert_den_Verlauf_mit_KI_Vorschlag_und_Korrektur()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Liefert(Kategorie.Rechnung));
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+        await client.PutAsJsonAsync($"/tickets/{angelegt.Id}/klassifizierung", Korrektur());
+
+        var detail = await client.GetFromJsonAsync<TicketDetailAntwort>($"/tickets/{angelegt.Id}");
+
+        Assert.That(detail!.Verlauf, Has.Count.EqualTo(2));
+        Assert.That(detail.Verlauf[0].Urheber, Is.EqualTo(nameof(Urheber.KI)));
+        Assert.That(detail.Verlauf[0].Kategorie, Is.EqualTo(nameof(Kategorie.Rechnung)));
+        Assert.That(detail.Verlauf[0].Bearbeiter, Is.EqualTo("test-modell"));
+        Assert.That(detail.Verlauf[1].Urheber, Is.EqualTo(nameof(Urheber.Mensch)));
+        Assert.That(detail.Verlauf[1].Bearbeiter, Is.EqualTo("m.schmidt"));
+        Assert.That(detail.Verlauf[1].Antwortvorschlag, Is.Null);
+    }
+
+    [TestCase("Quatsch", "Mittel")]
+    [TestCase("Rechnung", "Sehrdringend")]
+    [TestCase("2", "Mittel")]
+    public async Task PUT_klassifizierung_mit_unbekannten_Werten_wird_abgelehnt(
+        string kategorie, string dringlichkeit)
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Liefert());
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+
+        var antwort = await client.PutAsJsonAsync($"/tickets/{angelegt.Id}/klassifizierung",
+                                                  Korrektur(kategorie, dringlichkeit));
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [Test]
+    public async Task PUT_klassifizierung_ohne_Begruendung_wird_abgelehnt()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Liefert());
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+
+        var antwort = await client.PutAsJsonAsync($"/tickets/{angelegt.Id}/klassifizierung",
+                                                  Korrektur(begruendung: "  "));
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [Test]
+    public async Task PUT_klassifizierung_nach_der_Freigabe_gibt_409()
+    {
+        using var anwendung = MitKi(FakeKlassifizierer.Liefert());
+        using var client = anwendung.CreateClient();
+        var angelegt = await TicketAnlegen(client);
+        await client.PutAsync($"/tickets/{angelegt.Id}/freigabe", null);
+
+        var antwort = await client.PutAsJsonAsync($"/tickets/{angelegt.Id}/klassifizierung", Korrektur());
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
+    }
+
+    [Test]
+    public async Task PUT_klassifizierung_auf_eine_unbekannte_Id_gibt_404()
+    {
+        var antwort = await _client.PutAsJsonAsync($"/tickets/{Guid.NewGuid()}/klassifizierung", Korrektur());
+
+        Assert.That(antwort.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+
     private sealed class StolperndesRepository : ITicketRepository
     {
         public Task HinzufuegenAsync(Ticket ticket, CancellationToken abbruch = default) =>
@@ -289,4 +472,6 @@ public class TicketEndpunkteTests
         Assert.That(zeilen.Any(z => z.Level >= LogLevel.Warning
                                  && z.Kategorie == "Ticketlotse.Api.UnerwarteteFehler"), Is.False);
     }
+
+
 }

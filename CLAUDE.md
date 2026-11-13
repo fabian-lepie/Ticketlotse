@@ -20,12 +20,14 @@ Demo-/Bewerbungsprojekt von Fabian Lepie – sauberer, gut erklärbarer Code ist
 - Dringlichkeit: Niedrig, Mittel, Hoch
 - Teams: Messwesen, Abrechnung, Kundenservice, Vertrieb, Netzbetrieb (Zuordnung aus der Kategorie)
 - Status: Neu → WartetAufFreigabe (Konfidenz ≥ 70 %) oder ManuellePruefung (< 70 %) → Freigegeben
-- Sicherheitsregel: Notfallbegriffe (Gasgeruch, Stromausfall, kein Strom, kein Wasser, Wasserrohrbruch) → Dringlichkeit immer Hoch, egal was die KI vorschlägt
+- Sicherheitsregel: Notfallbegriffe (Gasgeruch, Stromausfall, kein Strom, kein Wasser, Wasserrohrbruch) → Dringlichkeit immer Hoch, egal was KI oder Mensch vorschlägt
 - Ein Mensch gibt jeden KI-Vorschlag frei
+- Einordnung: KI-Vorschlag und menschliche Korrekturen werden als Verlauf geführt; die letzte Einordnung gilt
+- Korrektur durch einen Menschen setzt den Status zurück auf WartetAufFreigabe (ggf. anderes Team)
 
 ## Etappen
 1. Fachmodell + Tests (Domain)
 2. REST-API (POST /tickets, GET /tickets/{id}, GET /tickets?status=…, PUT /tickets/{id}/freigabe)
 3. KI-Anbindung hinter Interface ITicketKlassifizierer (Fake für Tests)
 4. Datenbank, README, Beispieldaten
-5. Optional: RabbitMQ, Docker, GitHub Actions
+5. Optional: RabbitMQ, Docker, GitHub Actions, Eingabeprüfung und Sicherheit, strukturiertes Logging (JSON)

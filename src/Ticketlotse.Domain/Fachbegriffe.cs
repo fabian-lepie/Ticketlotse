@@ -10,3 +10,5 @@ public enum Dringlichkeit { Niedrig, Mittel, Hoch }
 public enum Team { Messwesen, Abrechnung, Kundenservice, Vertrieb, Netzbetrieb }
 
 public enum TicketStatus { Neu, WartetAufFreigabe, ManuellePruefung, Freigegeben }
+
+public enum Urheber {Mensch, KI }

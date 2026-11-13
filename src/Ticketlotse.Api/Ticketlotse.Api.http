@@ -78,3 +78,56 @@ GET {{host}}/tickets/00000000-0000-0000-0000-000000000000
 
 ### Fehlerfall: Freigabe einer unbekannten Id – erwartet 404
 PUT {{host}}/tickets/00000000-0000-0000-0000-000000000000/freigabe
+
+
+
+### Einordnung nachholen – 200, wenn das Ticket noch auf "Neu" steht.
+### 409, wenn es bereits eingeordnet ist. 503, wenn die KI nicht antwortet.
+POST {{host}}/tickets/{{anlegen.response.body.$.id}}/einordnung
+
+### Menschliche Korrektur – erwartet 200, Status geht zurück auf WartetAufFreigabe
+PUT {{host}}/tickets/{{anlegen.response.body.$.id}}/klassifizierung
+Content-Type: application/json
+
+{
+  "kategorie": "Lieferantenwechsel",
+  "dringlichkeit": "Mittel",
+  "begruendung": "Kunde will den Versorger wechseln, keine Rechnungsfrage.",
+  "bearbeiter": "m.schmidt"
+}
+
+### Einzelabruf mit Verlauf – zeigt KI-Vorschlag und Korrektur untereinander
+GET {{host}}/tickets/{{anlegen.response.body.$.id}}
+
+### Fehlerfall: unbekannte Kategorie – erwartet 400 mit Liste der erlaubten Werte
+PUT {{host}}/tickets/{{anlegen.response.body.$.id}}/klassifizierung
+Content-Type: application/json
+
+{
+  "kategorie": "Quatsch",
+  "dringlichkeit": "Mittel",
+  "begruendung": "Test.",
+  "bearbeiter": "m.schmidt"
+}
+
+### Fehlerfall: Korrektur ohne Begründung – erwartet 400
+PUT {{host}}/tickets/{{anlegen.response.body.$.id}}/klassifizierung
+Content-Type: application/json
+
+{
+  "kategorie": "Umzug",
+  "dringlichkeit": "Niedrig",
+  "begruendung": "  ",
+  "bearbeiter": "m.schmidt"
+}
+
+### Fehlerfall: Korrektur eines unbekannten Tickets – erwartet 404
+PUT {{host}}/tickets/00000000-0000-0000-0000-000000000000/klassifizierung
+Content-Type: application/json
+
+{
+  "kategorie": "Umzug",
+  "dringlichkeit": "Niedrig",
+  "begruendung": "Test.",
+  "bearbeiter": "m.schmidt"
+}
