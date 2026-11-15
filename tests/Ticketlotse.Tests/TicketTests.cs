@@ -179,4 +179,63 @@ public class TicketTests
 
         Assert.That(ticket.AktuelleEinordnung!.Dringlichkeit, Is.EqualTo(Dringlichkeit.Hoch));
     }
+
+    [Test]
+    public void Ein_Notfall_ist_fuer_die_KI_immer_eine_Stoerung()
+    {
+        var ticket = NeuesTicket("Im Treppenhaus ist starker Gasgeruch!");
+        ticket.Einordnen(Vorschlag(Kategorie.Sonstiges, Dringlichkeit.Niedrig), KiModell);
+
+        Assert.That(ticket.AktuelleEinordnung!.Kategorie, Is.EqualTo(Kategorie.Stoerung));
+        Assert.That(ticket.Team, Is.EqualTo(Team.Netzbetrieb));
+    }
+
+    [Test]
+    public void Ein_Mensch_darf_einen_Notfall_weiterleiten_die_Dringlichkeit_bleibt_hoch()
+    {
+        var ticket = NeuesTicket("Beim Lieferantenwechsel hatte ich kurz keinen Strom.");
+        ticket.Einordnen(Vorschlag(Kategorie.Stoerung, Dringlichkeit.Hoch), KiModell);
+        ticket.Korrigieren(Kategorie.Rechnung, Dringlichkeit.Mittel,
+                           "Ausfall ist behoben, offen ist die Rechnung.", "k.weber");
+
+        Assert.That(ticket.AktuelleEinordnung!.Kategorie, Is.EqualTo(Kategorie.Rechnung));
+        Assert.That(ticket.Team, Is.EqualTo(Team.Abrechnung));
+        Assert.That(ticket.AktuelleEinordnung.Dringlichkeit, Is.EqualTo(Dringlichkeit.Hoch),
+                    "Die Dringlichkeit schützt die Regel auch gegen den Menschen.");
+    }
+
+    [Test]
+    public void Ohne_Notfall_bleibt_die_Kategorie_der_Korrektur()
+    {
+        var ticket = NeuesTicket();
+        ticket.Einordnen(Vorschlag(Kategorie.Rechnung), KiModell);
+        ticket.Korrigieren(Kategorie.Lieferantenwechsel, Dringlichkeit.Mittel, "Kunde will wechseln.", "m.schmidt");
+
+        Assert.That(ticket.AktuelleEinordnung!.Kategorie, Is.EqualTo(Kategorie.Lieferantenwechsel));
+        Assert.That(ticket.Team, Is.EqualTo(Team.Vertrieb));
+    }
+
+    [TestCase("Im Treppenhaus ist starker Gasgeruch!")]
+    [TestCase("Im Keller riecht es nach Gas.")]
+    [TestCase("Seit heute früh Stromausfall in der ganzen Straße.")]
+    [TestCase("Ich habe keinen Strom.")]
+    [TestCase("Wir haben seit gestern kein Wasser mehr.")]
+    [TestCase("Die Wohnung ist seit Stunden ohne Strom.")]
+    [TestCase("Im Keller steht alles unter Wasser, Wasserrohrbruch!")]
+    public void Diese_Texte_gelten_als_Notfall(string text)
+    {
+        Assert.That(NeuesTicket(text).EnthaeltNotfallhinweis, Is.True);
+    }
+
+    [TestCase("Bitte senken Sie meinen Abschlag.")]
+    [TestCase("Ich möchte meinen Stromvertrag kündigen.")]
+    [TestCase("Mein Stromzähler zeigt 12345 an.")]
+    [TestCase("Ich habe keine Rechnung erhalten.")]
+    [TestCase("Bitte schicken Sie mir keine Werbung mehr.")]
+    [TestCase("Bitte Informationen zum Gastarif.")]
+    public void Diese_Texte_sind_kein_Notfall(string text)
+    {
+        Assert.That(NeuesTicket(text).EnthaeltNotfallhinweis, Is.False);
+    }
+
 }

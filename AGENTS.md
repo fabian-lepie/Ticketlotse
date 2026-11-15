@@ -13,14 +13,16 @@ Demo-/Bewerbungsprojekt von Fabian Lepie – sauberer, gut erklärbarer Code ist
 - Test-Driven Development: immer zuerst Tests schreiben (rot), dann Implementierung (grün), dann aufräumen
 - Fachbegriffe und Bezeichner auf Deutsch (Ticket, Kategorie, Dringlichkeit, Zustaendigkeit), Code-Kommentare kurz
 - Nur ausgedachte Testdaten, niemals echte Kundendaten
-- Nach jedem Schritt `dotnet test` ausführen; Änderungen kurz erklären, damit ich sie im Vorstellungsgespräch verstehe
+- Nach jedem Schritt `dotnet test` ausführen; Änderungen kurz erklären, damit es die Änderungen klar nachvollziehbar sind
 
 ## Fachmodell
 - Kategorien: Zaehlerstand, Abschlag, Rechnung, Umzug, Lieferantenwechsel, TarifVertrag, Stoerung, Sonstiges
 - Dringlichkeit: Niedrig, Mittel, Hoch
 - Teams: Messwesen, Abrechnung, Kundenservice, Vertrieb, Netzbetrieb (Zuordnung aus der Kategorie)
 - Status: Neu → WartetAufFreigabe (Konfidenz ≥ 70 %) oder ManuellePruefung (< 70 %) → Freigegeben
-- Sicherheitsregel: Notfallbegriffe (Gasgeruch, Stromausfall, kein Strom, kein Wasser, Wasserrohrbruch) → Dringlichkeit immer Hoch, egal was KI oder Mensch vorschlägt
+- Sicherheitsregel: Notfallmuster (Gasgeruch, "nach Gas", Stromausfall, Wasserrohrbruch, "kein/keinen/ohne Strom|Wasser|Gas") → Dringlichkeit immer Hoch, egal was KI oder Mensch vorschlägt
+- Die Kategorie erzwingt die Notfallregel nur beim KI-Vorschlag (Stoerung); ein Mensch darf umkategorisieren und damit weiterleiten – sonst wäre ein falsch erkannter Notfall beim Netzbetrieb gefangen
+- Die Mustererkennung ist ein Sicherheitsnetz für die offensichtlichen Fälle, kein Erkennungssystem – die eigentliche Erkennung macht das Sprachmodell
 - Ein Mensch gibt jeden KI-Vorschlag frei
 - Einordnung: KI-Vorschlag und menschliche Korrekturen werden als Verlauf geführt; die letzte Einordnung gilt
 - Korrektur durch einen Menschen setzt den Status zurück auf WartetAufFreigabe (ggf. anderes Team)

@@ -19,11 +19,24 @@ mit Bearbeiter, Begründung und Zeitpunkt. Die letzte Einordnung gilt.
 
 ## Fachregeln
 
-**Notfallregel.** Enthält ein Ticket einen Notfallbegriff – Gasgeruch, Stromausfall, kein
-Strom, kein Wasser, Wasserrohrbruch –, ist die Dringlichkeit immer `Hoch`. Das gilt
-unabhängig davon, was die KI vorschlägt **und** was ein Sachbearbeiter einträgt. Die Regel
-liegt im Domänenmodell, nicht im Prompt und nicht in der API: Kein Prompt und kein Formular
-kann sie aushebeln.
+**Notfallregel.** Passt der Text auf ein Notfallmuster – Gasgeruch, „riecht nach Gas",
+Stromausfall, Wasserrohrbruch, „kein/keinen/ohne Strom, Wasser oder Gas" –, ist die
+Dringlichkeit immer `Hoch`. Das gilt unabhängig davon, was die KI vorschlägt **und** was ein
+Sachbearbeiter einträgt. Die Regel liegt im Domänenmodell, nicht im Prompt und nicht in der
+API: Kein Prompt und kein Formular kann sie aushebeln.
+
+Bei der **Kategorie** gilt die Regel bewusst nur für die KI: Ein erkannter Notfall wird zur
+`Stoerung` und landet damit beim Netzbetrieb. Ein Mensch darf umkategorisieren und so
+weiterleiten – sonst wäre ein falsch erkannter Notfall für immer beim falschen Team
+gefangen. Die Dringlichkeit bleibt dabei trotzdem `Hoch`. Die Asymmetrie ist Absicht: Die
+Dringlichkeit schützt Leben und Sachwerte, die Kategorie organisiert Arbeit – und wer
+umkategorisiert, steht mit Namen und Begründung im Verlauf.
+
+**Die Mustererkennung ist ein Sicherheitsnetz für die offensichtlichen Fälle, kein
+Erkennungssystem.** Die eigentliche Erkennung macht das Sprachmodell – und das hat beim
+Gasgeruch von sich aus `Stoerung` und `Hoch` geliefert. Das Netz fängt nur den Fall, dass
+die KI es falsch einschätzt oder ein Mensch es herunterstuft. Formulierungen wie „der Strom
+ist weg" oder „bei uns ist alles dunkel" erkennt es nicht.
 
 **Konfidenz-Schwelle 70 %.** Ist die KI zu mindestens 70 % sicher, wartet das Ticket auf
 Freigabe (`WartetAufFreigabe`). Darunter geht es in die manuelle Prüfung

@@ -1,10 +1,22 @@
-﻿namespace Ticketlotse.Domain;
+﻿using System.Text.RegularExpressions;
 
-public sealed class Ticket
+namespace Ticketlotse.Domain;
+
+public sealed partial class Ticket
 {
-    // Fachregel: Bei diesen Begriffen ist es immer dringend – egal, wer etwas anderes vorschlägt.
-    private static readonly string[] Notfallbegriffe =
-        ["gasgeruch", "stromausfall", "kein strom", "kein wasser", "wasserrohrbruch"];
+    // Fachregel: Diese Muster gelten als Notfall. Bewusst als Muster und nicht als
+    // Wortliste – "kein Strom", "keinen Strom" und "ohne Strom" meinen dasselbe.
+    [GeneratedRegex(
+    """
+        gasgeruch
+        | nach\s+gas\b
+        | stromausfall
+        | wasserrohrbruch
+        | kein(?:e|en)?\s+(?:strom|wasser|gas)\b
+        | ohne\s+(?:strom|wasser|gas)\b
+        """,
+    RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace)]
+    private static partial Regex Notfallmuster();
 
     private readonly List<Einordnung> _einordnungVerlauf = [];
 
@@ -26,6 +38,8 @@ public sealed class Ticket
     private bool IstEingeordnet =>
         Status is TicketStatus.WartetAufFreigabe or TicketStatus.ManuellePruefung;
 
+    public bool EnthaeltNotfallhinweis => Notfallmuster().IsMatch($"{Betreff} {Text}");
+
     private Ticket(string absender, string betreff, string text, DateTimeOffset eingegangenAm)
     {
         Absender = absender;
@@ -45,9 +59,6 @@ public sealed class Ticket
         return new Ticket(absender.Trim(), betreff?.Trim() ?? "", text.Trim(), eingegangenAm ?? DateTimeOffset.UtcNow);
     }
 
-    public bool EnthaeltNotfallhinweis =>
-        Notfallbegriffe.Any(begriff => $"{Betreff} {Text}".Contains(begriff, StringComparison.OrdinalIgnoreCase));
-
     public void Einordnen(Klassifizierung vorschlag, string modell)
     {
         ArgumentNullException.ThrowIfNull(vorschlag);
@@ -55,7 +66,11 @@ public sealed class Ticket
             throw new InvalidOperationException("Das Ticket wurde bereits eingeordnet.");
 
         _einordnungVerlauf.Add(Einordnung.VonKi(
-            vorschlag with { Dringlichkeit = MitNotfallregel(vorschlag.Dringlichkeit) },
+            vorschlag with
+            {
+                Kategorie = MitNotfallregel(vorschlag.Kategorie),
+                Dringlichkeit = MitNotfallregel(vorschlag.Dringlichkeit),
+            },
             modell));
 
         Status = vorschlag.Konfidenz.IstAusreichend
@@ -68,6 +83,8 @@ public sealed class Ticket
         if (!IstEingeordnet)
             throw new InvalidOperationException("Nur eingeordnete Tickets können korrigiert werden.");
 
+        // Die Kategorie läuft hier absichtlich nicht durch die Notfallregel: Sonst könnte
+        // ein falsch erkannter Notfall das zuständige Team nie wieder verlassen.
         _einordnungVerlauf.Add(Einordnung.VonMensch(kategorie, MitNotfallregel(dringlichkeit), begruendung, bearbeiter));
 
         // Durch die neue Kategorie ist oft ein anderes Team zuständig – dort wird erneut geprüft.
@@ -82,7 +99,14 @@ public sealed class Ticket
         Status = TicketStatus.Freigegeben;
     }
 
-    // Sicherheitsregel: Notfallbegriffe erzwingen hohe Dringlichkeit, unabhängig vom Urheber.
+    // Sicherheitsregel, Teil 1: Notfallmuster erzwingen hohe Dringlichkeit –
+    // gegen die KI und gegen den Menschen. Hier gibt es keine Ausnahme.
     private Dringlichkeit MitNotfallregel(Dringlichkeit vorgeschlagen) =>
         EnthaeltNotfallhinweis ? Dringlichkeit.Hoch : vorgeschlagen;
+
+    // Sicherheitsregel, Teil 2: Die KI darf einen Notfall nicht wegkategorisieren und
+    // damit am Netzbetrieb vorbeileiten. Für einen Menschen gilt das nicht – er trägt
+    // die Verantwortung, sein Name steht im Verlauf, und er muss weiterleiten können.
+    private Kategorie MitNotfallregel(Kategorie vorgeschlagen) =>
+        EnthaeltNotfallhinweis ? Kategorie.Stoerung : vorgeschlagen;
 }
