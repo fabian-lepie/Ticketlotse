@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Ticketlotse.Api;
 using Ticketlotse.Application;
 using Ticketlotse.Domain;
+using Ticketlotse.Infrastructure;
 
 
 namespace Ticketlotse.Tests;
@@ -20,7 +21,12 @@ public class TicketEndpunkteTests
     [SetUp]
     public void SetUp()
     {
-        _anwendung = new WebApplicationFactory<Program>();
+        // Ausdrücklich ohne KI: kein Test darf von einem konfigurierten
+        // Zugangsschlüssel abhängen oder echte Anfragen verschicken.
+        _anwendung = new WebApplicationFactory<Program>().WithWebHostBuilder(aufbau =>
+            aufbau.ConfigureServices(dienste =>
+                dienste.AddSingleton<ITicketKlassifizierer, KeineKiAngebunden>()));
+
         _client = _anwendung.CreateClient();
     }
 

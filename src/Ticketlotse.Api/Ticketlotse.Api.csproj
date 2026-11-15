@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\Ticketlotse.Application\Ticketlotse.Application.csproj" />
@@ -9,6 +9,7 @@
     <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>651cf056-6fd0-46c0-bd87-ecff88837f09</UserSecretsId>
   </PropertyGroup>
 
 </Project>

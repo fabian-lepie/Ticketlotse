@@ -10,7 +10,9 @@ builder.Services.AddProblemDetails();
 
 // Ablage noch im Arbeitsspeicher – in Etappe 4 ersetzt EF Core diese Zeile.
 builder.Services.AddSingleton<ITicketRepository, TicketRepositoryImArbeitsspeicher>();
-builder.Services.AddSingleton<ITicketKlassifizierer, KeineKiAngebunden>();
+
+builder.Services.KiKlassifiziererHinzufuegen(builder.Configuration);
+
 
 builder.Services.AddScoped<Ticketverwaltung>();
 

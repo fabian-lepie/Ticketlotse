@@ -29,5 +29,6 @@ Demo-/Bewerbungsprojekt von Fabian Lepie – sauberer, gut erklärbarer Code ist
 1. Fachmodell + Tests (Domain)
 2. REST-API (POST /tickets, GET /tickets/{id}, GET /tickets?status=…, PUT /tickets/{id}/freigabe)
 3. KI-Anbindung hinter Interface ITicketKlassifizierer (Fake für Tests)
-4. Datenbank, README, Beispieldaten
-5. Optional: RabbitMQ, Docker, GitHub Actions, Eingabeprüfung und Sicherheit, strukturiertes Logging (JSON)
+4. Datenbank (EF Core, MS SQL), Beispieldaten; aufgezeichnete KI-Antworten als Grundlage für eine kostenlose Probedemo – README ist vorgezogen und liegt vor
+5. Optional: Docker, RabbitMQ, GitHub Actions, Eingabeprüfung und Sicherheit, strukturiertes Logging (JSON), OpenAPI, Dashboard
+6. KI-Anbindung über Azure; optional Betrieb auf Azure (App Service oder Container Apps, Azure SQL) – erst wenn das Projekt steht und getestet ist
